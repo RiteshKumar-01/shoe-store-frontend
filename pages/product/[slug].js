@@ -1,17 +1,20 @@
 import ProductDetailsCarousel from "@/components/ProductDetailsCarousel";
 import RelatedProducts from "@/components/RelatedProducts";
 import Wrapper from "@/components/Wrapper";
+import { fetchDataFromApi } from "@/utils/api";
 import React from "react";
 import { IoMdHeartEmpty } from "react-icons/io";
 
-const ProductDetails = () => {
+const ProductDetails = ({ product, products }) => {
+  const p = product?.data?.[0]?.attributes;
+
   return (
     <div className="w-full md:py-20">
       <Wrapper>
         <div className="flex flex-col lg:flex-row md:px-10 gap-[50px] lg:gap-[100px]">
           {/* left column start */}
           <div className="w-full md:w-auto flex-[1.5] max-w-[500px] lg:max-w-full mx-auto lg:mx-0">
-            <ProductDetailsCarousel />
+            <ProductDetailsCarousel images={p.image.data} />
           </div>
           {/* left column end */}
 
@@ -19,14 +22,14 @@ const ProductDetails = () => {
           <div className="flex-[1] py-3">
             {/* PRODUCT TITLE */}
             <div className="text-[34px] font-semibold mb-2 leading-tight">
-              JORDAN Retro 6 G
+              {p.name}
             </div>
 
             {/* PRODUCT SUBTITLE */}
-            <div className="text-lg font-semibold mb-5">Men's Golf Shoes</div>
+            <div className="text-lg font-semibold mb-5">{p.subtitle}</div>
 
             {/* PRODUCT PRICE */}
-            <div className="text-lg font-semibold">MRP : Rs. 19,695.00</div>
+            <div className="text-lg font-semibold">MRP : &#8377;{p.price}</div>
 
             <div className="text-md font-medium text-black/[0.5]">
               incl. of taxes
@@ -120,10 +123,42 @@ const ProductDetails = () => {
           {/* right column end */}
         </div>
 
-        <RelatedProducts />
+        {/* <RelatedProducts products={products}/> */}
       </Wrapper>
     </div>
   );
 };
 
 export default ProductDetails;
+
+export async function getStaticPaths() {
+  const products = await fetchDataFromApi("/api/products?populate=*");
+  const paths = products?.data?.map((p) => ({
+    params: {
+      slug: p.attributes.slug,
+    },
+  }));
+
+  return {
+    paths,
+    fallback: false,
+  };
+}
+
+export async function getStaticProps({ params: { slug } }) {
+  const product = await fetchDataFromApi(
+    `/api/products?populate=*&filters[slug][$eq]=${slug}`
+  );
+
+  //fetching product other than above product for Related Product
+  const products = await fetchDataFromApi(
+    `/api/products?populate=*&[filters][slug][$ne]=${slug}`
+  );
+
+  return {
+    props: {
+      product,
+      products,
+    },
+  };
+}
