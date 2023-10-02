@@ -10,7 +10,6 @@ const ProductCard = ({ data: { attributes: p, id } }) => {
       href={`/product/${p.slug}`}
       className="transform overflow-hidden bg-white duration-200 hover:scale-105 cursor-pointer"
     >
-      {console.log("p->", p)}
       <Image
         height={500}
         width={500}

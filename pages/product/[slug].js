@@ -1,15 +1,38 @@
 import ProductDetailsCarousel from "@/components/ProductDetailsCarousel";
 import RelatedProducts from "@/components/RelatedProducts";
 import Wrapper from "@/components/Wrapper";
+import { addToCart } from "@/store/cartSlice";
 import { fetchDataFromApi } from "@/utils/api";
-import React from "react";
+import { getDiscountPrice } from "@/utils/helper";
+import React, { useState } from "react";
 import { IoMdHeartEmpty } from "react-icons/io";
+import ReactMarkdown from "react-markdown";
+import { useSelector, useDispatch } from "react-redux";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const ProductDetails = ({ product, products }) => {
+  const [selectedSize, setSelectedSize] = useState();
+  const [showError, setShowError] = useState(false);
+  const dispatch = useDispatch();
   const p = product?.data?.[0]?.attributes;
+
+  const notify = () => {
+    toast.success("Success. Check your cart!", {
+      position: "bottom-right",
+      autoClose: 5000,
+      hideProgressBar: false,
+      closeOnClick: true,
+      pauseOnHover: true,
+      draggable: true,
+      progress: undefined,
+      theme: "dark",
+    });
+  };
 
   return (
     <div className="w-full md:py-20">
+      <ToastContainer />
       <Wrapper>
         <div className="flex flex-col lg:flex-row md:px-10 gap-[50px] lg:gap-[100px]">
           {/* left column start */}
@@ -29,7 +52,20 @@ const ProductDetails = ({ product, products }) => {
             <div className="text-lg font-semibold mb-5">{p.subtitle}</div>
 
             {/* PRODUCT PRICE */}
-            <div className="text-lg font-semibold">MRP : &#8377;{p.price}</div>
+            <div className="flex items-center text-black/[0.5]">
+              <p className="mr-2 text-lg font-semibold">&#8377;{p.price}</p>
+
+              {p.original_price && (
+                <>
+                  <p className="text-base  font-medium line-through">
+                    &#8377;{p.original_price}
+                  </p>
+                  <p className="ml-auto text-base font-medium text-green-500">
+                    {getDiscountPrice(p.original_price, p.price)} % off
+                  </p>
+                </>
+              )}
+            </div>
 
             <div className="text-md font-medium text-black/[0.5]">
               incl. of taxes
@@ -51,51 +87,58 @@ const ProductDetails = ({ product, products }) => {
 
               {/* SIZE START */}
               <div id="sizesGrid" className="grid grid-cols-3 gap-2">
-                <div className="border rounded-md text-center py-3 font-medium hover:border-black cursor-pointer">
-                  UK 6
-                </div>
-                <div className="border rounded-md text-center py-3 font-medium hover:border-black cursor-pointer">
-                  UK 6.5
-                </div>
-                <div className="border rounded-md text-center py-3 font-medium hover:border-black cursor-pointer">
-                  UK 7
-                </div>
-                <div className="border rounded-md text-center py-3 font-medium hover:border-black cursor-pointer">
-                  UK 7.5
-                </div>
-                <div className="border rounded-md text-center py-3 font-medium hover:border-black cursor-pointer">
-                  UK 8
-                </div>
-                <div className="border rounded-md text-center py-3 font-medium hover:border-black cursor-pointer">
-                  UK 8.5
-                </div>
-                <div className="border rounded-md text-center py-3 font-medium hover:border-black cursor-pointer">
-                  UK 9
-                </div>
-                <div className="border rounded-md text-center py-3 font-medium hover:border-black cursor-pointer">
-                  UK 9
-                </div>
-                <div className="border rounded-md text-center py-3 font-medium cursor-not-allowed bg-black/[0.1] opacity-50">
-                  UK 9
-                </div>
+                {p.size.data.map((item, i) => (
+                  <div
+                    key={i}
+                    className={`border rounded-md text-center py-3 font-medium ${
+                      item.enabled
+                        ? "hover:border-black cursor-pointer"
+                        : "cursor-not-allowed bg-black/[0.1] opacity-50"
+                    } ${selectedSize === item.size ? "border-black" : ""}`}
+                    onClick={() => {
+                      setSelectedSize(item.size);
+                      setShowError(false);
+                    }}
+                  >
+                    {item.size}
+                  </div>
+                ))}
               </div>
+
               {/* SIZE END */}
 
               {/* SHOW ERROR START */}
-              <div className="text-red-600 mt-1">
-                Size selection is required
-              </div>
-              {/* {showError && (
+              {showError && (
                 <div className="text-red-600 mt-1">
                   Size selection is required
                 </div>
-              )} */}
+              )}
               {/* SHOW ERROR END */}
             </div>
             {/* PRODUCT SIZE RANGE END */}
 
             {/* ADD TO CART BUTTON START */}
-            <button className="w-full py-4 rounded-full bg-black text-white text-lg font-medium transition-transform active:scale-95 mb-3 hover:opacity-75">
+            <button
+              className="w-full py-4 rounded-full bg-black text-white text-lg font-medium transition-transform active:scale-95 mb-3 hover:opacity-75"
+              onClick={() => {
+                if (!selectedSize) {
+                  setShowError(true);
+                  document.getElementById("sizesGrid").scrollIntoView({
+                    block: "center",
+                    behavior: "smooth",
+                  });
+                } else {
+                  dispatch(
+                    addToCart({
+                      ...product?.data?.[0],
+                      selectedSize,
+                      oneQuantityPrice: p.price,
+                    })
+                  );
+                  notify();
+                }
+              }}
+            >
               Add to Cart
             </button>
             {/* ADD TO CART BUTTON END */}
@@ -110,20 +153,14 @@ const ProductDetails = ({ product, products }) => {
             <div>
               <div className="text-lg font-bold mb-5">Product Details</div>
               <div className="markdown text-md mb-5">
-                Never mess with a classic. Keep heritage on your feet with a
-                white-on-white look that will never go out of style. Never mess
-                with a classic. Keep heritage on your feet with a white-on-white
-                look that will never go out of style. Never mess with a classic.
-                Keep heritage on your feet with a white-on-white look that will
-                never go out of style.
-                {/* <ReactMarkdown>{p.description}</ReactMarkdown> */}
+                <ReactMarkdown>{p.description}</ReactMarkdown>
               </div>
             </div>
           </div>
           {/* right column end */}
         </div>
 
-        {/* <RelatedProducts products={products}/> */}
+        <RelatedProducts products={products} />
       </Wrapper>
     </div>
   );
@@ -149,8 +186,6 @@ export async function getStaticProps({ params: { slug } }) {
   const product = await fetchDataFromApi(
     `/api/products?populate=*&filters[slug][$eq]=${slug}`
   );
-
-  //fetching product other than above product for Related Product
   const products = await fetchDataFromApi(
     `/api/products?populate=*&[filters][slug][$ne]=${slug}`
   );
